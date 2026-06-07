@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg-library: #fcf8f2;
+  --bg-library-dark: #120e0c;
+  --wood-walnut: #3d2211;
+  --wood-oak: #6b3e1c;
+  --wood-cherry: #501d12;
+  --wood-pine: #8b5a2b;
+  --gold-leaf: #d4af37;
+  --gold-glow: rgba(212, 175, 55, 0.3);
+  
+  --ink-charcoal: #1c1512;
+  --ink-muted: #5c4e47;
+  --paper-cream: #fbf6ee;
+  --paper-edge: #e7dfd3;
+  
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Outfit', system-ui, sans-serif;
+}
+
+.theme-dark {
+  --bg-library: #120e0c;
+  --ink-charcoal: #f3eae3;
+  --ink-muted: #a6948b;
+  --paper-cream: #201713;
+  --paper-edge: #2d201a;
+}
+
+body {
+  background-color: var(--bg-library);
+  color: var(--ink-charcoal);
+  font-family: var(--font-sans);
+  margin: 0;
+  overflow-x: hidden;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* UI Typography classes */
+.font-serif-book {
+  font-family: var(--font-serif);
+}
+
+.font-heading-library {
+  font-family: var(--font-heading);
+}
+
+/* Wood Grain texture */
+.wood-texture {
+  background-color: var(--wood-walnut);
+  background-image: 
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 10px),
+    linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.4) 100%),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 40px);
+  box-shadow: inset 0 4px 6px rgba(255,255,255,0.1), inset 0 -10px 20px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.4);
+}
+
+.wood-shelf-board {
+  height: 28px;
+  background: linear-gradient(to bottom, #60371c 0%, #462610 25%, #2a1508 100%);
+  border-top: 2px solid rgba(255,255,255,0.15);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -3px 6px rgba(0,0,0,0.4);
+}
+
+.wood-shelf-shadow {
+  height: 45px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+
+/* Book 3D Effects */
+.book-spine-3d {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+}
+
+.book-spine-3d::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.08) 6%,
+    rgba(0, 0, 0, 0.15) 12%,
+    transparent 20%,
+    rgba(255, 255, 255, 0.1) 85%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.book-spine-3d::before {
+  content: '';
+  position: absolute;
+  top: 0.8%;
+  bottom: 0.8%;
+  left: 3px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 1px 0 2px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.book-shadow-ambient {
+  box-shadow: 
+    -4px 2px 8px rgba(0, 0, 0, 0.35),
+    -1px 1px 2px rgba(0, 0, 0, 0.2),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.book-shadow-lifted {
+  box-shadow: 
+    -12px 10px 24px rgba(0, 0, 0, 0.5),
+    -2px 2px 6px rgba(0, 0, 0, 0.3),
+    0 20px 25px -5px rgba(0, 0, 0, 0.2),
+    0 0 12px var(--gold-glow);
+}
+
+/* Cozy Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-library);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--wood-pine);
+  border: 2px solid var(--bg-library);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--wood-oak);
+}
+
+/* Custom progress ring dasharray transition */
+.progress-ring-circle {
+  transition: stroke-dashoffset 0.55s ease-in-out;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
