@@ -33,26 +33,29 @@ It provides an intuitive interface for cataloging volumes, recording lessons in 
 ### 🪵 Immersive Bookshelf Visualization
 * **Solid Walnut Shelves**: Shelf tiers rendered with realistic deep wood-grains, top-down radial candlelights, and glowing drop-shadows.
 * **Realistic Book Spines**: Volumes feature bound ridge ribs, gold margins, custom leather/linen textures, and heights matching their page weight.
-* **Rivet Brass Plates**: Shelves labeled with classic brass plates centered on shelf boards.
+* **Drag & Drop Bookcase**: Re-organize reading status rows (Want to Read -> Reading -> Completed) or genre placements by dropping book covers directly onto shelf boards.
 
-### 📔 Collector's Reading Journal
-* **Slide-Out Paper Log**: Detailed views slide out as custom leather diaries with warm cream-lined paper pages (`#f4e8d0`).
-* **Handwritten Insights**: Reviews and takeaways styled in handwriting cursive fonts (`La Belle Aurore`) for a tactile notebook feel.
+### 📔 Collector's Reading Journal & Progress
+* **Slide-Out Dual Page Paper Log**: Detailed views slide out as open journals with warm cream-lined paper pages (`#f4e8d0`) and progress indicators.
+* **Reading Progress Trackers**: Update current page metrics dynamically with visual sliders.
+* **Session Logs & History**: Record pages read, reading times, and dates to log daily sessions and automatically calculate reading speeds.
 * **Candlelight Star Ratings**: Interactive star ratings supporting half-star increments that animate on mouseover.
 
-### 🔍 Smart Autocomplete Lookup
-* **OpenLibrary Search API**: Live, debounced search that queries title keywords, displaying matches with covers.
-* **Instant Autofill**: Selected records automatically load author names, page counts, genres, and cover assets.
+### 🔍 Google Books Autocomplete Lookup
+* **Google Books API Integration**: Live, debounced search that fetches high-res covers, authors, page counts, publishers, publication dates, and ISBN codes.
+* **Instant Autofill**: Selected records automatically load metadata so manual entry is rarely required.
 
 ### 🧠 My Knowledge Vault
-* **Second-Brain Cards**: A searchable dashboard consolidating all key notes, takeaways, and favorite quotes across your library.
-* **Context Cards**: Quotes and notes link back to the book details drawer.
+* **Categorized Thoughts & Lessons**: Tag and categorize notes (e.g. Lesson, Thought, Quote, Summary) to keep takeaways structured.
+* **Dynamic Tag Clouds**: A tags selector cloud at the top of the Knowledge Vault allowing one-click filtering of insights.
+* **Context Cards**: Highlight cards link back directly to active drawer logs.
 
 ### 📅 Chronological Reading History
 * **Grouped Timelines**: Vertical tracks organizing books by the year they were read.
 * **Read Span Tracking**: Displays start/end dates and calculates read durations automatically.
 
 ### 📊 Reading Analytics
+* **Reading Velocity**: Gauges pages read per day over the last 30 days.
 * **Goal Progress Rings**: Dual dashboard rings displaying monthly and annual completions.
 * **Confetti Celebration**: Gold/cream canvas particle explosions when achieving annual targets.
 * **Contribution Heatmap**: A 52-week contribution calendar tracking cataloging actions.
