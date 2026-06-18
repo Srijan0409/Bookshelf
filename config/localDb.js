@@ -155,7 +155,7 @@ export const localDb = {
   },
 
   // Notes operations
-  addNote: async (userId, bookId, content) => {
+  addNote: async (userId, bookId, content, type, tags) => {
     const db = readDb();
     const book = db.books.find(b => b._id === bookId && b.userId === userId);
     if (book) {
@@ -163,6 +163,8 @@ export const localDb = {
       const newNote = {
         id: Math.random().toString(36).substr(2, 9),
         content,
+        type: type || 'Lesson',
+        tags: Array.isArray(tags) ? tags : [],
         createdAt: new Date()
       };
       book.notes.push(newNote);
@@ -173,13 +175,15 @@ export const localDb = {
     throw new Error('Book not found');
   },
   
-  updateNote: async (userId, bookId, noteId, content) => {
+  updateNote: async (userId, bookId, noteId, content, type, tags) => {
     const db = readDb();
     const book = db.books.find(b => b._id === bookId && b.userId === userId);
     if (book && book.notes) {
       const note = book.notes.find(n => n.id === noteId);
       if (note) {
-        note.content = content;
+        if (content !== undefined) note.content = content;
+        if (type !== undefined) note.type = type;
+        if (tags !== undefined) note.tags = Array.isArray(tags) ? tags : [];
         book.updatedAt = new Date();
         writeDb(db);
         return note;
@@ -230,5 +234,46 @@ export const localDb = {
       return true;
     }
     throw new Error('Book or Quote not found');
+  },
+
+  // Reading sessions operations
+  addReadingSession: async (userId, bookId, pagesRead, duration, date) => {
+    const db = readDb();
+    const book = db.books.find(b => b._id === bookId && b.userId === userId);
+    if (book) {
+      if (!book.readingSessions) book.readingSessions = [];
+      const newSession = {
+        id: Math.random().toString(36).substr(2, 9),
+        date: date ? new Date(date) : new Date(),
+        pagesRead: Number(pagesRead),
+        duration: duration ? Number(duration) : undefined
+      };
+      book.readingSessions.push(newSession);
+      book.currentPage = Math.min((book.currentPage || 0) + Number(pagesRead), book.pages);
+      if (book.currentPage >= book.pages && book.status !== 'Completed') {
+        book.status = 'Completed';
+        book.finishDate = new Date();
+      }
+      book.updatedAt = new Date();
+      writeDb(db);
+      return newSession;
+    }
+    throw new Error('Book not found');
+  },
+
+  deleteReadingSession: async (userId, bookId, sessionId) => {
+    const db = readDb();
+    const book = db.books.find(b => b._id === bookId && b.userId === userId);
+    if (book && book.readingSessions) {
+      const session = book.readingSessions.find(s => s.id === sessionId);
+      if (session) {
+        book.currentPage = Math.max(0, (book.currentPage || 0) - session.pagesRead);
+        book.readingSessions = book.readingSessions.filter(s => s.id !== sessionId);
+        book.updatedAt = new Date();
+        writeDb(db);
+      }
+      return book;
+    }
+    throw new Error('Book or Session not found');
   }
 };
