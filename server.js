@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.js';
 import bookRoutes from './routes/books.js';
@@ -13,8 +15,38 @@ connectDB();
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+// Secure Express headers with Helmet
+app.use(helmet());
+
+// Rate limiting configurations
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // limit each IP to 200 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // limit each IP to 20 login/register requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many authentication attempts, please try again after 15 minutes' }
+});
+
+// Apply limiters to API routes
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/register', authLimiter);
+app.use('/api/', generalLimiter);
+
+// Configure CORS
+app.use(cors({
+  origin: process.env.CLIENT_URL || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // API Routes
