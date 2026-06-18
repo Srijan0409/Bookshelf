@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { X, Search, BookOpen, Loader2, Sparkles } from 'lucide-react';
 
 export default function AddBookModal({ isOpen, onClose }) {
-  const { addBook } = useAuth();
+  const { addBook, token } = useAuth();
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,12 +18,16 @@ export default function AddBookModal({ isOpen, onClose }) {
   const [coverImage, setCoverImage] = useState('');
   const [genre, setGenre] = useState('');
   const [pages, setPages] = useState('');
+  const [currentPage, setCurrentPage] = useState('0');
   const [publicationYear, setPublicationYear] = useState('');
   const [status, setStatus] = useState('Reading');
+  const [isbn, setIsbn] = useState('');
+  const [description, setDescription] = useState('');
+  const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Debounced search effect
+  // Debounced search via Google Books API
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 3) {
       setSearchResults([]);
@@ -34,31 +38,70 @@ export default function AddBookModal({ isOpen, onClose }) {
       setIsSearching(true);
       setSearchError('');
       try {
-        const res = await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(searchQuery)}&limit=5`);
+        const API_BASE = 'http://localhost:5000/api/v1';
+        const res = await fetch(`${API_BASE}/books/search?q=${encodeURIComponent(searchQuery)}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         
-        const books = data.docs.map(doc => ({
-          title: doc.title,
-          subtitle: doc.subtitle || '',
-          author: doc.author_name ? doc.author_name[0] : 'Unknown Author',
-          coverImage: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : '',
-          genre: doc.subject ? doc.subject[0] : 'General',
-          pages: doc.number_of_pages_median || 200,
-          publicationYear: doc.first_publish_year || new Date().getFullYear()
-        }));
+        const books = (data.items || []).map(item => {
+          const info = item.volumeInfo || {};
+          let cover = '';
+          if (info.imageLinks) {
+            cover = info.imageLinks.thumbnail || info.imageLinks.smallThumbnail || '';
+            if (cover.startsWith('http://')) {
+              cover = cover.replace('http://', 'https://');
+            }
+          }
+          
+          let parsedIsbn = '';
+          if (info.industryIdentifiers) {
+            const isbn13 = info.industryIdentifiers.find(id => id.type === 'ISBN_13');
+            const isbn10 = info.industryIdentifiers.find(id => id.type === 'ISBN_10');
+            parsedIsbn = isbn13 ? isbn13.identifier : (isbn10 ? isbn10.identifier : '');
+          }
+
+          const publishYear = info.publishedDate 
+            ? new Date(info.publishedDate).getFullYear() || parseInt(info.publishedDate.substring(0, 4))
+            : new Date().getFullYear();
+
+          return {
+            title: info.title || '',
+            subtitle: info.subtitle || (info.description ? (info.description.substring(0, 120) + (info.description.length > 120 ? '...' : '')) : ''),
+            author: info.authors ? info.authors.join(', ') : 'Unknown Author',
+            coverImage: cover,
+            genre: info.categories ? info.categories[0] : 'General',
+            pages: info.pageCount || 200,
+            publicationYear: isNaN(publishYear) ? new Date().getFullYear() : publishYear,
+            isbn: parsedIsbn,
+            description: info.description || '',
+            categories: info.categories || []
+          };
+        });
 
         setSearchResults(books);
       } catch (err) {
-        console.error('OpenLibrary API search error:', err);
+        console.error('Google Books API search error:', err);
         setSearchError('Could not fetch book details. Try filling manually.');
       } finally {
         setIsSearching(false);
       }
-    }, 600); // 600ms debounce
+    }, 600);
 
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
+
+  // Synchronize status and page counts
+  useEffect(() => {
+    if (status === 'Completed' && pages) {
+      setCurrentPage(pages.toString());
+    } else if (status === 'Wishlist') {
+      setCurrentPage('0');
+    }
+  }, [status, pages]);
 
   if (!isOpen) return null;
 
@@ -70,6 +113,9 @@ export default function AddBookModal({ isOpen, onClose }) {
     setGenre(selected.genre);
     setPages(selected.pages);
     setPublicationYear(selected.publicationYear);
+    setIsbn(selected.isbn);
+    setDescription(selected.description);
+    setCategories(selected.categories);
     setSearchResults([]);
     setSearchQuery('');
   };
@@ -91,21 +137,28 @@ export default function AddBookModal({ isOpen, onClose }) {
       coverImage,
       genre,
       pages: Number(pages),
+      currentPage: Number(currentPage) || 0,
       publicationYear: Number(publicationYear) || undefined,
-      status
+      status,
+      isbn,
+      description,
+      categories
     });
 
     setIsSubmitting(false);
 
     if (res.success) {
-      // Clear forms
       setTitle('');
       setSubtitle('');
       setAuthor('');
       setCoverImage('');
       setGenre('');
       setPages('');
+      setCurrentPage('0');
       setPublicationYear('');
+      setIsbn('');
+      setDescription('');
+      setCategories([]);
       setStatus('Reading');
       onClose();
     } else {
@@ -114,70 +167,71 @@ export default function AddBookModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in text-[#1c1512] dark:text-[#f3eae3] select-none">
-      <div className="bg-[#fbf6ee] dark:bg-[#1a120f] max-w-lg w-full rounded-2xl border-2 border-amber-900/10 dark:border-amber-900/30 overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in text-[#f4e8d0] select-none">
+      {/* Modal Box */}
+      <div className="bg-[#1c1411] max-w-lg w-full rounded-2xl border-2 border-[#c9a66b]/20 overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header toolbar */}
-        <div className="bg-[#f7efe3] dark:bg-[#201713] px-6 py-4 border-b border-amber-900/10 dark:border-amber-900/20 flex items-center justify-between">
-          <h3 className="text-lg font-heading-library font-semibold text-amber-900 dark:text-amber-400 flex items-center gap-2">
-            <BookOpen className="w-5 h-5" /> Catalog a New Book
+        <div className="bg-black/20 px-6 py-4 border-b border-[#c9a66b]/10 flex items-center justify-between">
+          <h3 className="text-base font-serif-book font-bold text-[#c9a66b] flex items-center gap-2">
+            <BookOpen className="w-5 h-5" /> Catalog a New Volume
           </h3>
-          <button onClick={onClose} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded text-[#5c4e47] dark:text-[#a6948b]">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-1 hover:bg-white/5 rounded text-[#a48e82] transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Form Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
-          {/* Smart Autocomplete Search */}
+        <div className="p-6 overflow-y-auto space-y-5">
+          {/* Google Books Autocomplete Search */}
           <div className="relative">
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" /> Autofill Book via Search (Optional)
+            <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1.5 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#c9a66b] fill-[#c9a66b]/10" /> Query Google Books API (Optional)
             </label>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Type title (e.g. 'Atomic Habits' or 'Sapiens')..."
+                placeholder="Type title, author, or ISBN (e.g. 'Deep Work')..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-sm"
+                className="w-full pl-9 pr-4 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
               />
-              <div className="absolute left-3.5 top-3 text-[#a6948b]">
-                {isSearching ? <Loader2 className="w-4 h-4 animate-spin text-amber-600" /> : <Search className="w-4 h-4" />}
+              <div className="absolute left-3 top-3 text-[#a48e82]">
+                {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#c9a66b]" /> : <Search className="w-3.5 h-3.5" />}
               </div>
             </div>
 
-            {/* Live suggestions dropdown */}
+            {/* Suggestions list */}
             {searchResults.length > 0 && (
-              <div className="absolute left-0 right-0 mt-1 bg-[#fdfaf6] dark:bg-[#201713] border-2 border-amber-800/20 rounded-xl shadow-xl z-20 divide-y divide-[#e7dfd3] dark:divide-[#3d2211] max-h-60 overflow-y-auto">
+              <div className="absolute left-0 right-0 mt-1 bg-[#241a16] border border-[#c9a66b]/20 rounded-xl shadow-2xl z-20 divide-y divide-[#c9a66b]/10 max-h-60 overflow-y-auto">
                 {searchResults.map((bookResult, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSelectBook(bookResult)}
-                    className="w-full px-4 py-2.5 hover:bg-amber-900/5 text-left text-xs flex gap-3 items-center transition-colors"
+                    className="w-full px-4 py-2.5 hover:bg-[#c9a66b]/5 text-left text-xs flex gap-3 items-center transition-colors"
                   >
                     {bookResult.coverImage ? (
                       <img src={bookResult.coverImage} className="w-8 h-11 object-cover rounded shadow" alt="Cover" />
                     ) : (
-                      <div className="w-8 h-11 bg-amber-900/10 dark:bg-amber-400/10 rounded flex items-center justify-center text-[8px]">No Cover</div>
+                      <div className="w-8 h-11 bg-black/40 rounded flex items-center justify-center text-[7px] text-[#a48e82]">No Cover</div>
                     )}
                     <div>
-                      <p className="font-bold text-amber-950 dark:text-amber-300 line-clamp-1">{bookResult.title}</p>
-                      <p className="text-[#5c4e47] dark:text-[#a6948b]">{bookResult.author} ({bookResult.publicationYear})</p>
+                      <p className="font-bold text-[#c9a66b] line-clamp-1">{bookResult.title}</p>
+                      <p className="text-[10px] text-[#a48e82] font-semibold">{bookResult.author} ({bookResult.publicationYear})</p>
                     </div>
                   </button>
                 ))}
               </div>
             )}
-            {searchError && <p className="text-[10px] text-amber-600/80 font-medium mt-1">{searchError}</p>}
+            {searchError && <p className="text-[9px] text-[#c9a66b] mt-1 font-semibold">{searchError}</p>}
           </div>
 
-          <div className="h-[1px] bg-amber-900/10 dark:bg-amber-900/20 my-2"></div>
+          <div className="h-[1px] bg-[#c9a66b]/10 my-1"></div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {formError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold rounded-lg">
+              <div className="p-3 bg-red-950/20 border border-red-900/30 text-red-400 text-xs font-semibold rounded-lg text-center">
                 {formError}
               </div>
             )}
@@ -185,28 +239,28 @@ export default function AddBookModal({ isOpen, onClose }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Title */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
-                  Book Title *
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
+                  Volume Title *
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-medium"
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
                   required
                 />
               </div>
 
               {/* Author */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
-                  Author *
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
+                  Author Name *
                 </label>
                 <input
                   type="text"
                   value={author}
                   onChange={(e) => setAuthor(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-medium"
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
                   required
                 />
               </div>
@@ -214,36 +268,36 @@ export default function AddBookModal({ isOpen, onClose }) {
 
             {/* Subtitle */}
             <div>
-              <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
-                Subtitle
+              <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
+                Subtitle / Description
               </label>
               <input
                 type="text"
                 value={subtitle}
                 onChange={(e) => setSubtitle(e.target.value)}
-                className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-medium"
+                className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Genre */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
                   Genre *
                 </label>
                 <input
                   type="text"
                   value={genre}
                   onChange={(e) => setGenre(e.target.value)}
-                  placeholder="e.g. Self-Improvement"
-                  className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-medium"
+                  placeholder="e.g. Philosophy"
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
                   required
                 />
               </div>
 
               {/* Cover Image URL */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
                   Cover Image URL
                 </label>
                 <input
@@ -251,48 +305,64 @@ export default function AddBookModal({ isOpen, onClose }) {
                   value={coverImage}
                   onChange={(e) => setCoverImage(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-medium"
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {/* Pages */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
                   Pages *
                 </label>
                 <input
                   type="number"
                   value={pages}
                   onChange={(e) => setPages(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-medium"
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
                   required
+                />
+              </div>
+
+              {/* Start Page (progress) */}
+              <div>
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
+                  Current Page
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={pages || 9999}
+                  value={currentPage}
+                  onChange={(e) => setCurrentPage(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
+                  disabled={status === 'Completed' || status === 'Wishlist'}
                 />
               </div>
 
               {/* Pub Year */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
                   Year
                 </label>
                 <input
                   type="number"
                   value={publicationYear}
                   onChange={(e) => setPublicationYear(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-medium"
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
                 />
               </div>
 
               {/* Status */}
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-[#5c4e47] dark:text-[#a6948b] mb-1">
+                <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
                   Status
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-[#e7dfd3] dark:border-[#3d2211] bg-[#fdfaf6] dark:bg-[#1f1613] rounded-xl outline-none focus:border-amber-500 text-xs font-semibold cursor-pointer"
+                  className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold cursor-pointer text-[#e8dcc6]"
                 >
                   <option value="Reading">Reading</option>
                   <option value="Completed">Completed</option>
@@ -303,26 +373,40 @@ export default function AddBookModal({ isOpen, onClose }) {
               </div>
             </div>
 
-            <div className="flex gap-4 pt-4 border-t border-amber-900/10 dark:border-amber-900/20">
+            {/* ISBN field */}
+            <div>
+              <label className="block text-[8px] uppercase font-bold tracking-widest text-[#a48e82] mb-1">
+                ISBN Code
+              </label>
+              <input
+                type="text"
+                value={isbn}
+                onChange={(e) => setIsbn(e.target.value)}
+                placeholder="e.g. 9781473637467"
+                className="w-full px-3 py-2 border border-[#c9a66b]/15 bg-black/20 rounded-xl outline-none focus:border-[#c9a66b] text-xs font-semibold"
+              />
+            </div>
+
+            <div className="flex gap-4 pt-4 border-t border-[#c9a66b]/10">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 border-2 border-[#e7dfd3] dark:border-[#3d2211] text-[#5c4e47] dark:text-[#a6948b] font-semibold text-xs rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+                className="flex-1 py-2.5 border border-[#c9a66b]/15 text-[#a48e82] hover:bg-white/5 font-semibold text-xs rounded-xl transition-all"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 py-2.5 bg-amber-800 hover:bg-amber-900 disabled:bg-amber-800/55 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-900/20 cursor-pointer"
+                className="flex-1 py-2.5 bg-[#b08d57] hover:bg-[#c9a66b] disabled:bg-[#b08d57]/50 text-black font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer uppercase tracking-wider"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Cataloging...</span>
+                    <span>Adding...</span>
                   </>
                 ) : (
-                  <span>Catalog Book</span>
+                  <span>Catalog Volume</span>
                 )}
               </button>
             </div>
