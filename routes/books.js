@@ -6,6 +6,10 @@ import { localDb } from '../config/localDb.js';
 
 const router = express.Router();
 
+// Simple in-memory cache for search queries to reduce external API hits
+const searchCache = new Map();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache duration
+
 router.use(protect);
 
 // @desc    Get all user books
@@ -36,6 +40,74 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @desc    Search books via Google Books API (with OpenLibrary fallback & caching)
+router.get('/search', async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ message: 'Search query is required' });
+
+  const queryKey = q.trim().toLowerCase();
+  
+  // Check memory cache first
+  if (searchCache.has(queryKey)) {
+    const cached = searchCache.get(queryKey);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.json(cached.data);
+    } else {
+      searchCache.delete(queryKey);
+    }
+  }
+
+  try {
+    const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=5${apiKey ? `&key=${apiKey}` : ''}`;
+    
+    const response = await fetch(url);
+    
+    // Handle Google rate-limit (429) by falling back to OpenLibrary
+    if (response.status === 429) {
+      console.warn('Google Books API rate limited (429). Falling back to OpenLibrary API.');
+      
+      const olRes = await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=5`);
+      if (!olRes.ok) {
+        throw new Error('Both Google Books and OpenLibrary API failed due to limit restrictions');
+      }
+      
+      const olData = await olRes.json();
+      
+      // Remap OpenLibrary docs layout to match Google Books schema structure
+      const items = (olData.docs || []).map(doc => ({
+        volumeInfo: {
+          title: doc.title,
+          subtitle: doc.subtitle || '',
+          authors: doc.author_name || ['Unknown Author'],
+          imageLinks: doc.cover_i ? {
+            thumbnail: `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+          } : undefined,
+          categories: doc.subject || ['General'],
+          pageCount: doc.number_of_pages_median || 200,
+          publishedDate: doc.first_publish_year ? String(doc.first_publish_year) : undefined,
+          industryIdentifiers: doc.isbn ? [{ type: 'ISBN_13', identifier: doc.isbn[0] }] : undefined
+        }
+      }));
+      
+      const mappedData = { items };
+      searchCache.set(queryKey, { data: mappedData, timestamp: Date.now() });
+      return res.json(mappedData);
+    }
+
+    if (!response.ok) {
+      throw new Error(`Google Books API responded with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    searchCache.set(queryKey, { data, timestamp: Date.now() });
+    return res.json(data);
+  } catch (error) {
+    console.error('Error querying book database APIs:', error.message);
+    return res.status(500).json({ message: 'Failed to search catalog databases' });
+  }
+});
+
 // @desc    Get book by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -56,7 +128,7 @@ router.get('/:id', async (req, res) => {
 
 // @desc    Create a new book
 router.post('/', async (req, res) => {
-  const { title, subtitle, author, coverImage, genre, publicationYear, pages, status, rating } = req.body;
+  const { title, subtitle, author, coverImage, genre, publicationYear, pages, currentPage, status, rating, isbn, description, categories } = req.body;
 
   try {
     const bookData = {
@@ -67,8 +139,12 @@ router.post('/', async (req, res) => {
       genre: genre || 'General',
       publicationYear: Number(publicationYear) || undefined,
       pages: Number(pages) || 200,
+      currentPage: Number(currentPage) || 0,
       status: status || 'Reading',
       rating: Number(rating) || 0,
+      isbn: isbn || undefined,
+      description: description || undefined,
+      categories: Array.isArray(categories) ? categories : (categories ? [categories] : []),
       startDate: status === 'Reading' || status === 'Completed' ? new Date() : null,
       finishDate: status === 'Completed' ? new Date() : null
     };
@@ -89,7 +165,7 @@ router.post('/', async (req, res) => {
 // @desc    Update a book
 router.put('/:id', async (req, res) => {
   try {
-    const { title, subtitle, author, coverImage, genre, publicationYear, pages, status, rating, review, startDate, finishDate } = req.body;
+    const { title, subtitle, author, coverImage, genre, publicationYear, pages, currentPage, status, rating, review, startDate, finishDate, isbn, description, categories } = req.body;
 
     if (mongoose.connection.readyState === 1) {
       const book = await Book.findOne({ _id: req.params.id, userId: req.user._id });
@@ -103,6 +179,14 @@ router.put('/:id', async (req, res) => {
       book.publicationYear = publicationYear ?? book.publicationYear;
       book.pages = pages ? Number(pages) : book.pages;
       
+      if (currentPage !== undefined) {
+        book.currentPage = Number(currentPage);
+        if (book.currentPage >= book.pages && book.status !== 'Completed') {
+          book.status = 'Completed';
+          book.finishDate = new Date();
+        }
+      }
+
       if (status && status !== book.status) {
         book.status = status;
         if (status === 'Completed' && !book.finishDate) book.finishDate = new Date();
@@ -116,6 +200,12 @@ router.put('/:id', async (req, res) => {
 
       if (startDate !== undefined) book.startDate = startDate ? new Date(startDate) : null;
       if (finishDate !== undefined) book.finishDate = finishDate ? new Date(finishDate) : null;
+      
+      book.isbn = isbn ?? book.isbn;
+      book.description = description ?? book.description;
+      if (categories !== undefined) {
+        book.categories = Array.isArray(categories) ? categories : [categories];
+      }
 
       const updatedBook = await book.save();
       return res.json(updatedBook);
@@ -129,8 +219,12 @@ router.put('/:id', async (req, res) => {
       if (genre !== undefined) updates.genre = genre;
       if (publicationYear !== undefined) updates.publicationYear = Number(publicationYear);
       if (pages !== undefined) updates.pages = Number(pages);
+      if (currentPage !== undefined) updates.currentPage = Number(currentPage);
       if (rating !== undefined) updates.rating = Number(rating);
       if (review !== undefined) updates.review = review;
+      if (isbn !== undefined) updates.isbn = isbn;
+      if (description !== undefined) updates.description = description;
+      if (categories !== undefined) updates.categories = Array.isArray(categories) ? categories : [categories];
       
       if (status !== undefined) {
         updates.status = status;
@@ -177,7 +271,7 @@ router.delete('/:id', async (req, res) => {
 // ==========================================
 
 router.post('/:id/notes', async (req, res) => {
-  const { content } = req.body;
+  const { content, type, tags } = req.body;
   if (!content) return res.status(400).json({ message: 'Note content is required' });
 
   try {
@@ -188,6 +282,8 @@ router.post('/:id/notes', async (req, res) => {
       const newNote = {
         id: Math.random().toString(36).substr(2, 9),
         content,
+        type: type || 'Lesson',
+        tags: Array.isArray(tags) ? tags : [],
         createdAt: new Date()
       };
       book.notes.push(newNote);
@@ -195,7 +291,7 @@ router.post('/:id/notes', async (req, res) => {
       return res.status(201).json(newNote);
     } else {
       // JSON DB Fallback
-      const newNote = await localDb.addNote(req.user._id, req.params.id, content);
+      const newNote = await localDb.addNote(req.user._id, req.params.id, content, type, tags);
       return res.status(201).json(newNote);
     }
   } catch (error) {
@@ -204,7 +300,7 @@ router.post('/:id/notes', async (req, res) => {
 });
 
 router.put('/:id/notes/:noteId', async (req, res) => {
-  const { content } = req.body;
+  const { content, type, tags } = req.body;
   try {
     if (mongoose.connection.readyState === 1) {
       const book = await Book.findOne({ _id: req.params.id, userId: req.user._id });
@@ -213,12 +309,14 @@ router.put('/:id/notes/:noteId', async (req, res) => {
       const note = book.notes.find(n => n.id === req.params.noteId);
       if (!note) return res.status(404).json({ message: 'Note not found' });
 
-      note.content = content;
+      if (content !== undefined) note.content = content;
+      if (type !== undefined) note.type = type;
+      if (tags !== undefined) note.tags = Array.isArray(tags) ? tags : [];
       await book.save();
       return res.json(note);
     } else {
       // JSON DB Fallback
-      const note = await localDb.updateNote(req.user._id, req.params.id, req.params.noteId, content);
+      const note = await localDb.updateNote(req.user._id, req.params.id, req.params.noteId, content, type, tags);
       return res.json(note);
     }
   } catch (error) {
@@ -290,6 +388,68 @@ router.delete('/:id/quotes/:quoteId', async (req, res) => {
       // JSON DB Fallback
       await localDb.deleteQuote(req.user._id, req.params.id, req.params.quoteId);
       return res.json({ message: 'Quote deleted successfully' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ==========================================
+// READING SESSIONS CRUD
+// ==========================================
+
+// @desc    Add a reading session
+router.post('/:id/sessions', async (req, res) => {
+  const { pagesRead, duration, date } = req.body;
+  if (pagesRead === undefined) return res.status(400).json({ message: 'Pages read is required' });
+
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const book = await Book.findOne({ _id: req.params.id, userId: req.user._id });
+      if (!book) return res.status(404).json({ message: 'Book not found' });
+
+      const newSession = {
+        id: Math.random().toString(36).substr(2, 9),
+        date: date ? new Date(date) : new Date(),
+        pagesRead: Number(pagesRead),
+        duration: duration ? Number(duration) : undefined
+      };
+      book.readingSessions.push(newSession);
+      book.currentPage = Math.min(book.currentPage + Number(pagesRead), book.pages);
+      if (book.currentPage >= book.pages && book.status !== 'Completed') {
+        book.status = 'Completed';
+        book.finishDate = new Date();
+      }
+      await book.save();
+      return res.status(201).json(newSession);
+    } else {
+      // JSON DB Fallback
+      const newSession = await localDb.addReadingSession(req.user._id, req.params.id, pagesRead, duration, date);
+      return res.status(201).json(newSession);
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Delete a reading session
+router.delete('/:id/sessions/:sessionId', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const book = await Book.findOne({ _id: req.params.id, userId: req.user._id });
+      if (!book) return res.status(404).json({ message: 'Book not found' });
+
+      const session = book.readingSessions.find(s => s.id === req.params.sessionId);
+      if (session) {
+        book.currentPage = Math.max(0, book.currentPage - session.pagesRead);
+        book.readingSessions = book.readingSessions.filter(s => s.id !== req.params.sessionId);
+        await book.save();
+      }
+      return res.json({ message: 'Session deleted successfully' });
+    } else {
+      // JSON DB Fallback
+      await localDb.deleteReadingSession(req.user._id, req.params.id, req.params.sessionId);
+      return res.json({ message: 'Session deleted successfully' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
