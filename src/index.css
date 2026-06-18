@@ -1,133 +1,248 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&family=La+Belle+Aurore&family=Manrope:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
-  --bg-library: #fcf8f2;
-  --bg-library-dark: #120e0c;
-  --wood-walnut: #3d2211;
-  --wood-oak: #6b3e1c;
-  --wood-cherry: #501d12;
-  --wood-pine: #8b5a2b;
-  --gold-leaf: #d4af37;
-  --gold-glow: rgba(212, 175, 55, 0.3);
+  /* Default: Walnut Night Theme */
+  --bg-library: #1f140f;
+  --bg-panel: #2d1e17;
+  --bg-sidebar: rgba(22, 14, 10, 0.45);
   
-  --ink-charcoal: #1c1512;
-  --ink-muted: #5c4e47;
-  --paper-cream: #fbf6ee;
-  --paper-edge: #e7dfd3;
+  --wood-grain-color: rgba(45, 30, 23, 0.8);
+  --wood-edge: #432a1d;
+  --shelf-lighting: rgba(226, 185, 106, 0.15);
   
-  --font-serif: 'Playfair Display', Georgia, serif;
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-heading: 'Outfit', system-ui, sans-serif;
+  --text-primary: #f4e8d0;
+  --text-secondary: #e8dcc6;
+  --text-muted: #a48e82;
+  
+  --metal-gold: #c9a66b;
+  --metal-brass: #b08d57;
+  --accent-amber: #d6a34d;
+  --accent-candle: #e2b96a;
+  
+  --gold-glow: rgba(201, 166, 107, 0.25);
+  
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Manrope', system-ui, sans-serif;
+  --font-handwritten: 'La Belle Aurore', cursive;
 }
 
-.theme-dark {
-  --bg-library: #120e0c;
-  --ink-charcoal: #f3eae3;
-  --ink-muted: #a6948b;
-  --paper-cream: #201713;
-  --paper-edge: #2d201a;
+/* Charcoal Espresso Theme */
+.theme-charcoal {
+  --bg-library: #090808;
+  --bg-panel: #141110;
+  --bg-sidebar: rgba(12, 10, 9, 0.55);
+  
+  --wood-grain-color: rgba(26, 20, 17, 0.9);
+  --wood-edge: #2c211c;
+  --shelf-lighting: rgba(226, 185, 106, 0.1);
+  
+  --text-primary: #f8f1e5;
+  --text-secondary: #eae0cf;
+  --text-muted: #918178;
+  
+  --gold-glow: rgba(201, 166, 107, 0.18);
 }
 
 body {
   background-color: var(--bg-library);
-  color: var(--ink-charcoal);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   margin: 0;
   overflow-x: hidden;
-  transition: background-color 0.5s ease, color 0.5s ease;
+  position: relative;
+  min-height: 100vh;
+  transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1), color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* UI Typography classes */
+@keyframes candle-flicker-primary {
+  0%, 100% {
+    opacity: 0.08;
+    transform: translate(0, 0) scale(1);
+  }
+  20% {
+    opacity: 0.11;
+    transform: translate(-10px, 5px) scale(1.02);
+  }
+  40% {
+    opacity: 0.07;
+    transform: translate(5px, -5px) scale(0.98);
+  }
+  60% {
+    opacity: 0.10;
+    transform: translate(-5px, -10px) scale(1.04);
+  }
+  80% {
+    opacity: 0.09;
+    transform: translate(10px, 10px) scale(0.96);
+  }
+}
+
+@keyframes candle-flicker-secondary {
+  0%, 100% {
+    opacity: 0.05;
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.08;
+    transform: translate(15px, -10px) scale(1.05);
+  }
+}
+
+/* Warm Ambient Lamp Lighting Overlay with candle flicker */
+body::before {
+  content: '';
+  position: fixed;
+  top: -10%;
+  right: -10%;
+  width: 80vw;
+  height: 80vh;
+  background: radial-gradient(circle, rgba(226, 185, 106, 0.12) 0%, rgba(0,0,0,0) 70%);
+  pointer-events: none;
+  z-index: 1;
+  animation: candle-flicker-primary 12s infinite ease-in-out;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  left: -10%;
+  width: 90vw;
+  height: 90vh;
+  background: radial-gradient(circle, rgba(214, 163, 77, 0.08) 0%, rgba(0,0,0,0) 75%);
+  pointer-events: none;
+  z-index: 1;
+  animation: candle-flicker-secondary 18s infinite ease-in-out;
+}
+
+/* Typography styles */
 .font-serif-book {
   font-family: var(--font-serif);
 }
 
-.font-heading-library {
-  font-family: var(--font-heading);
+.font-handwritten-journal {
+  font-family: var(--font-handwritten);
 }
 
-/* Wood Grain texture */
-.wood-texture {
-  background-color: var(--wood-walnut);
-  background-image: 
-    repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 10px),
-    linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.4) 100%),
-    repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 2px, transparent 2px, transparent 40px);
-  box-shadow: inset 0 4px 6px rgba(255,255,255,0.1), inset 0 -10px 20px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.4);
+/* Luxury Material Systems */
+.glass-sidebar {
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(201, 166, 107, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
-.wood-shelf-board {
-  height: 28px;
-  background: linear-gradient(to bottom, #60371c 0%, #462610 25%, #2a1508 100%);
-  border-top: 2px solid rgba(255,255,255,0.15);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -3px 6px rgba(0,0,0,0.4);
+.glass-card {
+  background: rgba(20, 15, 12, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(201, 166, 107, 0.08);
+  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.25);
 }
 
-.wood-shelf-shadow {
-  height: 45px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+.brass-label-plate {
+  background: linear-gradient(135deg, #c9a66b 0%, #b08d57 50%, #906e39 100%);
+  border: 1px solid #dfc79b;
+  box-shadow: 
+    0 1px 1px rgba(255, 255, 255, 0.2), 
+    inset 0 1px 2px rgba(255,255,255,0.4), 
+    inset 0 -1px 2px rgba(0,0,0,0.4),
+    0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Solid Walnut Shelf Board with Warm LED lighting glow */
+.walnut-shelf-board {
+  height: 30px;
+  background: linear-gradient(to bottom, var(--wood-edge) 0%, var(--bg-panel) 40%, #0d0907 100%);
+  border-top: 2px solid rgba(201, 166, 107, 0.2);
+  box-shadow: 
+    0 4px 12px rgba(0,0,0,0.5), 
+    inset 0 1px 2px rgba(255,255,255,0.08), 
+    inset 0 -4px 8px rgba(0,0,0,0.4);
+}
+
+.walnut-shelf-lighting {
+  height: 55px;
+  background: linear-gradient(to bottom, var(--shelf-lighting) 0%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0) 100%);
   pointer-events: none;
 }
 
-/* Book 3D Effects */
-.book-spine-3d {
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+/* Shimmer Animation Keyframe for gold reflections */
+@keyframes gold-reflection {
+  0% {
+    transform: translate(-150%, -150%) rotate(45deg);
+  }
+  100% {
+    transform: translate(150%, 150%) rotate(45deg);
+  }
 }
 
-.book-spine-3d::after {
+.gold-shimmer-trigger:hover::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
   background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.08) 6%,
-    rgba(0, 0, 0, 0.15) 12%,
-    transparent 20%,
-    rgba(255, 255, 255, 0.1) 85%,
-    rgba(0, 0, 0, 0.35) 100%
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(201, 166, 107, 0.25) 45%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(201, 166, 107, 0.25) 55%,
+    rgba(255, 255, 255, 0) 70%,
+    transparent 100%
   );
-  border-radius: inherit;
+  animation: gold-reflection 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
   pointer-events: none;
+  z-index: 5;
 }
 
-.book-spine-3d::before {
-  content: '';
-  position: absolute;
-  top: 0.8%;
-  bottom: 0.8%;
-  left: 3px;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.25);
-  box-shadow: 1px 0 2px rgba(0, 0, 0, 0.2);
-  pointer-events: none;
+/* Physical Book spine texturing styles */
+.spine-grain-leather {
+  background-image: radial-gradient(rgba(0,0,0,0.15) 15%, transparent 20%),
+                    radial-gradient(rgba(0,0,0,0.1) 15%, transparent 20%);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+}
+
+.spine-grain-cloth {
+  background-image: linear-gradient(90deg, rgba(0,0,0,0.08) 50%, transparent 50%),
+                    linear-gradient(rgba(0,0,0,0.08) 50%, transparent 50%);
+  background-size: 2px 2px;
+}
+
+/* Ribbed spine sections */
+.spine-rib {
+  height: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+  width: 100%;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.2);
 }
 
 .book-shadow-ambient {
   box-shadow: 
-    -4px 2px 8px rgba(0, 0, 0, 0.35),
-    -1px 1px 2px rgba(0, 0, 0, 0.2),
-    0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    -5px 5px 12px rgba(0, 0, 0, 0.5),
+    -1px 1px 3px rgba(0, 0, 0, 0.3),
+    0 12px 18px -4px rgba(0, 0, 0, 0.2);
 }
 
 .book-shadow-lifted {
   box-shadow: 
-    -12px 10px 24px rgba(0, 0, 0, 0.5),
-    -2px 2px 6px rgba(0, 0, 0, 0.3),
-    0 20px 25px -5px rgba(0, 0, 0, 0.2),
-    0 0 12px var(--gold-glow);
+    -15px 12px 30px rgba(0, 0, 0, 0.65),
+    -2px 2px 8px rgba(0, 0, 0, 0.4),
+    0 24px 35px -5px rgba(0, 0, 0, 0.3),
+    0 0 18px var(--gold-glow);
 }
 
-/* Cozy Custom Scrollbar */
+/* Scrollbars customized to look like wood grain edges */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -135,18 +250,59 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--wood-pine);
-  border: 2px solid var(--bg-library);
-  border-radius: 5px;
+  background: var(--bg-panel);
+  border: 1px solid rgba(201, 166, 107, 0.2);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--wood-oak);
+  background: var(--wood-edge);
 }
 
-/* Custom progress ring dasharray transition */
-.progress-ring-circle {
-  transition: stroke-dashoffset 0.55s ease-in-out;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
+/* Custom SVG chart overrides */
+.chart-axis-line {
+  stroke: rgba(201, 166, 107, 0.2);
+}
+.chart-axis-text {
+  fill: var(--text-muted);
+  font-family: var(--font-sans);
+}
+
+/* Drag and Drop dropzone styling */
+.shelf-dropzone-active {
+  background: rgba(201, 166, 107, 0.08) !important;
+  border-color: rgba(201, 166, 107, 0.4) !important;
+  box-shadow: 
+    0 0 20px rgba(201, 166, 107, 0.15),
+    inset 0 0 15px rgba(201, 166, 107, 0.05) !important;
+  transition: all 0.3s ease;
+}
+
+.book-draggable {
+  cursor: grab;
+}
+
+.book-draggable:active {
+  cursor: grabbing;
+}
+
+/* Mobile touch momentum scrolling */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Modal Fade-in Keyframes */
+.animate-fade-in {
+  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
