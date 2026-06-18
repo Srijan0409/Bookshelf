@@ -14,14 +14,16 @@ export const AuthProvider = ({ children }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(localStorage.getItem('library_dark') === 'true');
 
-  // Sync dark mode style class
+  // Sync luxury theme class
   useEffect(() => {
     const root = window.document.documentElement;
     if (darkMode) {
-      root.classList.add('theme-dark');
+      root.classList.add('theme-charcoal');
+      root.classList.remove('theme-walnut');
       localStorage.setItem('library_dark', 'true');
     } else {
-      root.classList.remove('theme-dark');
+      root.classList.add('theme-walnut');
+      root.classList.remove('theme-charcoal');
       localStorage.setItem('library_dark', 'false');
     }
   }, [darkMode]);
@@ -271,7 +273,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const addNote = async (bookId, content) => {
+  const addNote = async (bookId, content, type = 'Lesson', tags = []) => {
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/books/${bookId}/notes`, {
@@ -280,7 +282,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content, type, tags })
       });
       if (res.ok) {
         await Promise.all([fetchBooks(), fetchStats()]);
@@ -290,7 +292,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateNote = async (bookId, noteId, content) => {
+  const updateNote = async (bookId, noteId, content, type, tags) => {
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/books/${bookId}/notes/${noteId}`, {
@@ -299,7 +301,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content, type, tags })
       });
       if (res.ok) {
         await Promise.all([fetchBooks(), fetchStats()]);
@@ -323,6 +325,44 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Delete note error:', error);
+    }
+  };
+
+  const addReadingSession = async (bookId, pagesRead, duration, date) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/books/${bookId}/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ pagesRead, duration, date })
+      });
+      if (res.ok) {
+        await Promise.all([fetchBooks(), fetchStats()]);
+        return { success: true };
+      }
+    } catch (error) {
+      console.error('Add reading session error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const deleteReadingSession = async (bookId, sessionId) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/books/${bookId}/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        await Promise.all([fetchBooks(), fetchStats()]);
+      }
+    } catch (error) {
+      console.error('Delete reading session error:', error);
     }
   };
 
@@ -398,6 +438,8 @@ export const AuthProvider = ({ children }) => {
       deleteNote,
       addQuote,
       deleteQuote,
+      addReadingSession,
+      deleteReadingSession,
       openDrawer,
       closeDrawer
     }}>
