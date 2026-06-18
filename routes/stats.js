@@ -100,11 +100,29 @@ router.get('/', async (req, res) => {
       }
     }
 
+    // Reading velocity (pages/day over last 30 days)
+    let pagesReadLast30Days = 0;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    books.forEach(b => {
+      if (b.readingSessions && b.readingSessions.length > 0) {
+        b.readingSessions.forEach(s => {
+          if (new Date(s.date) >= thirtyDaysAgo) {
+            pagesReadLast30Days += (s.pagesRead || 0);
+          }
+        });
+      } else if (b.status === 'Completed' && b.finishDate && new Date(b.finishDate) >= thirtyDaysAgo) {
+        pagesReadLast30Days += (b.pages || 0);
+      }
+    });
+    const readingVelocity = Number((pagesReadLast30Days / 30).toFixed(1));
+
     // Goal progress
     const annualGoal = user?.readingGoal?.annual || 12;
     const monthlyGoal = user?.readingGoal?.monthly || 1;
 
-    // Monthly completed stats for the past 6 months
+    // Monthly completed stats for the past 6 months (aggregating count AND pages)
     const monthlyHistory = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
@@ -119,7 +137,24 @@ router.get('/', async (req, res) => {
         return fDate.getFullYear() === year && fDate.getMonth() === monthNum;
       }).length;
 
-      monthlyHistory.push({ name: monthName, count });
+      let pagesCount = 0;
+      books.forEach(b => {
+        if (b.readingSessions && b.readingSessions.length > 0) {
+          b.readingSessions.forEach(s => {
+            const sDate = new Date(s.date);
+            if (sDate.getFullYear() === year && sDate.getMonth() === monthNum) {
+              pagesCount += (s.pagesRead || 0);
+            }
+          });
+        } else if (b.status === 'Completed' && b.finishDate) {
+          const fDate = new Date(b.finishDate);
+          if (fDate.getFullYear() === year && fDate.getMonth() === monthNum) {
+            pagesCount += (b.pages || 0);
+          }
+        }
+      });
+
+      monthlyHistory.push({ name: monthName, count, pages: pagesCount });
     }
 
     // Genre Distribution list for charts
@@ -139,6 +174,11 @@ router.get('/', async (req, res) => {
           if (n.createdAt) dates.push(new Date(n.createdAt).toISOString().split('T')[0]);
         });
       }
+      if (b.readingSessions) {
+        b.readingSessions.forEach(s => {
+          if (s.date) dates.push(new Date(s.date).toISOString().split('T')[0]);
+        });
+      }
       dates.forEach(dStr => {
         dateCounts[dStr] = (dateCounts[dStr] || 0) + 1;
       });
@@ -155,7 +195,8 @@ router.get('/', async (req, res) => {
         completedThisYear,
         completedThisMonth,
         readingBooksCount: readingBooks.length,
-        wishlistBooksCount: wishlistBooks.length
+        wishlistBooksCount: wishlistBooks.length,
+        readingVelocity
       },
       goals: {
         annual: annualGoal,
