@@ -24,6 +24,7 @@ const sampleBooks = [
     genre: 'Self-Improvement',
     publicationYear: 2018,
     pages: 320,
+    currentPage: 320,
     status: 'Completed',
     rating: 5,
     startDate: new Date('2026-01-05'),
@@ -33,9 +34,9 @@ const sampleBooks = [
       ratedAt: new Date('2026-01-18')
     },
     notes: [
-      { id: 'n1', content: 'You do not rise to the level of your goals. You fall to the level of your systems.' },
-      { id: 'n2', content: 'Every action you take is a vote for the type of person you wish to become.' },
-      { id: 'n3', content: 'Make good habits obvious, attractive, easy, and satisfying.' }
+      { id: 'n1', content: 'You do not rise to the level of your goals. You fall to the level of your systems.', type: 'Lesson', tags: ['habits', 'systems'] },
+      { id: 'n2', content: 'Every action you take is a vote for the type of person you wish to become.', type: 'Thought', tags: ['identity'] },
+      { id: 'n3', content: 'Make good habits obvious, attractive, easy, and satisfying.', type: 'Lesson', tags: ['habits'] }
     ],
     favoriteQuotes: [
       { id: 'q1', text: 'Small habits create remarkable results.', page: 12 }
@@ -49,6 +50,7 @@ const sampleBooks = [
     genre: 'Productivity',
     publicationYear: 2016,
     pages: 304,
+    currentPage: 120,
     status: 'Reading',
     rating: 4.5,
     startDate: new Date('2026-05-10'),
@@ -57,11 +59,15 @@ const sampleBooks = [
       ratedAt: new Date('2026-05-25')
     },
     notes: [
-      { id: 'n4', content: 'Deep work is the ability to focus without distraction on a cognitively demanding task.' },
-      { id: 'n5', content: 'High-Quality Work Produced = (Time Spent) x (Intensity of Focus)' }
+      { id: 'n4', content: 'Deep work is the ability to focus without distraction on a cognitively demanding task.', type: 'Thought', tags: ['productivity'] },
+      { id: 'n5', content: 'High-Quality Work Produced = (Time Spent) x (Intensity of Focus)', type: 'Lesson', tags: ['productivity', 'focus'] }
     ],
     favoriteQuotes: [
       { id: 'q2', text: 'To produce at your peak level you need to work for extended periods with full concentration on a single task.', page: 44 }
+    ],
+    readingSessions: [
+      { id: 's1', date: new Date('2026-05-11'), pagesRead: 50, duration: 45 },
+      { id: 's2', date: new Date('2026-05-12'), pagesRead: 70, duration: 60 }
     ]
   },
   {
@@ -72,6 +78,7 @@ const sampleBooks = [
     genre: 'Finance',
     publicationYear: 2020,
     pages: 250,
+    currentPage: 250,
     status: 'Completed',
     rating: 5,
     startDate: new Date('2026-02-12'),
@@ -81,8 +88,8 @@ const sampleBooks = [
       ratedAt: new Date('2026-02-28')
     },
     notes: [
-      { id: 'n6', content: 'Doing well with money has a little to do with how smart you are and a lot to do with how you behave.' },
-      { id: 'n7', content: 'Wealth is the nice cars not purchased, the diamonds not bought. Wealth is assets not yet converted into the stuff you see.' }
+      { id: 'n6', content: 'Doing well with money has a little to do with how smart you are and a lot to do with how you behave.', type: 'Lesson', tags: ['finance', 'behavior'] },
+      { id: 'n7', content: 'Wealth is the nice cars not purchased, the diamonds not bought. Wealth is assets not yet converted into the stuff you see.', type: 'Thought', tags: ['finance'] }
     ],
     favoriteQuotes: [
       { id: 'q3', text: 'Using your money to buy control over your time is the highest dividend money pays.', page: 82 }
@@ -96,6 +103,7 @@ const sampleBooks = [
     genre: 'Philosophy',
     publicationYear: 2020,
     pages: 244,
+    currentPage: 0,
     status: 'Wishlist',
     notes: [],
     favoriteQuotes: []
